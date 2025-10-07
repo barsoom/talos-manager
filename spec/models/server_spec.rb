@@ -1,4 +1,32 @@
 RSpec.describe Server do
+  describe "Server::Manual" do
+    it "allows creation without provider-specific metadata" do
+      server = described_class::Manual.create!(name: "manual-1", ip: "203.0.113.10")
+
+      expect(server.provider_backed?).to be(false)
+      expect(server.bootstrappable?).to be(false)
+      expect(server.product).to eq("manual")
+      expect(server.data_center).to eq("manual")
+      expect(server.status).to eq("unknown")
+    end
+
+    it "stores provided metadata when present" do
+      lsblk_payload = { "blockdevices" => [{ "name" => "sda", "wwn" => "manual" }] }
+      server = described_class::Manual.create!(
+        name: "manual-2",
+        ip: "203.0.113.11",
+        uuid: "manual-uuid",
+        lsblk: lsblk_payload,
+      )
+
+      expect(server.bootstrap_metadata).to include(
+        bootstrappable: false,
+        uuid: "manual-uuid",
+        lsblk: lsblk_payload,
+      )
+    end
+  end
+
   it "validates uniqueness of name but only if it changed (to allow other attributes to be updated while duplicates exists)" do
     api_key = api_keys(:hetzner_cloud)
 

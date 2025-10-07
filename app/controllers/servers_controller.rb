@@ -32,10 +32,20 @@ class ServersController < ApplicationController
 
   def prepare_bootstrap
     @server = Server.find(params[:id])
+
+    unless @server.provider_backed?
+      redirect_to servers_path, alert: "Bootstrap is only available for Hetzner-managed servers."
+      return
+    end
   end
 
   def bootstrap
     server = Server.find(params[:id])
+
+    unless server.provider_backed?
+      redirect_to servers_path, alert: "Bootstrap is only available for Hetzner-managed servers."
+      return
+    end
 
     talos_version = params.expect(:talos_version)
     talos_image_factory_schematic_id = params[:talos_image_factory_schematic_id]
@@ -67,6 +77,11 @@ class ServersController < ApplicationController
 
   def rescue
     server = Server.find(params[:id])
+
+    unless server.provider_backed?
+      redirect_to servers_path, alert: "Rescue mode is only available for Hetzner-managed servers."
+      return
+    end
 
     server.rescue
 

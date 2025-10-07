@@ -2,7 +2,7 @@
 
 class Server < ApplicationRecord
   belongs_to :cluster, optional: true
-  belongs_to :api_key
+  belongs_to :api_key, optional: true
   belongs_to :talos_image_factory_schematic, optional: true
 
   has_one :machine_config, dependent: :destroy
@@ -14,13 +14,14 @@ class Server < ApplicationRecord
   # at Hetzner in which case the sync will bypass the validation and add duplicates to the database.
   validates_uniqueness_of :name, allow_nil: true, if: -> { name_changed? }
   validates_presence_of :ip
-  validates_presence_of :ipv6
-  validates_presence_of :product
-  validates_presence_of :data_center
-  validates_presence_of :status # running, initializing, starting, stopping, off, deleting migrating, rebuilding, unknown
+  validates_presence_of :api_key, if: :provider_backed?
+  validates_presence_of :ipv6, if: :provider_backed?
+  validates_presence_of :product, if: :provider_backed?
+  validates_presence_of :data_center, if: :provider_backed?
+  validates_presence_of :status, if: :provider_backed? # running, initializing, starting, stopping, off, deleting migrating, rebuilding, unknown
 
   # Implement #sync_with_provider in subclasses of Server
-  after_save :sync_with_provider, if: :sync
+  after_save :sync_with_provider, if: -> { sync && provider_backed? }
 
   after_update_commit lambda {
     if saved_change_to_name?
@@ -54,6 +55,10 @@ class Server < ApplicationRecord
 
   def talos_type
     name.include?("control-plane") ? "controlplane" : "worker"
+  end
+
+  def provider_backed?
+    true
   end
 
   # NOTE: Doesn't necessarily imply that the server was successfully bootstrapped after config was sent
